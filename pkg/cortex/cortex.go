@@ -176,19 +176,19 @@ func (c *Config) Validate(log log.Logger) error {
 // Cortex is the root datastructure for Cortex.
 type Cortex struct {
 	target             ModuleName
-	httpAuthMiddleware middleware.Interface
+	HTTPAuthMiddleware middleware.Interface
 
 	// set during initialization
 	serviceMap map[ModuleName]services.Service
 
-	server        *server.Server
+	Server        *server.Server
 	ring          *ring.Ring
 	overrides     *validation.Overrides
-	distributor   *distributor.Distributor
+	Distributor   *distributor.Distributor
 	ingester      *ingester.Ingester
 	flusher       *flusher.Flusher
 	store         chunk.Store
-	deletesStore  *purger.DeleteStore
+	DeletesStore  *purger.DeleteStore
 	frontend      *frontend.Frontend
 	tableManager  *chunk.TableManager
 	cache         cache.Cache
@@ -205,7 +205,7 @@ type Cortex struct {
 
 	// Queryable that the querier should use to query the long
 	// term storage. It depends on the storage engine used.
-	storeQueryable prom_storage.Queryable
+	StoreQueryable prom_storage.Queryable
 }
 
 // New makes a new Cortex.
@@ -229,7 +229,7 @@ func New(cfg Config) (*Cortex, error) {
 	}
 
 	cortex.serviceMap = serviceMap
-	cortex.server.HTTP.Handle("/services", http.HandlerFunc(cortex.servicesHandler))
+	cortex.Server.HTTP.Handle("/services", http.HandlerFunc(cortex.servicesHandler))
 	return cortex, nil
 }
 
@@ -253,7 +253,7 @@ func (t *Cortex) setupAuthMiddleware(cfg *Config) {
 				}
 			},
 		}
-		t.httpAuthMiddleware = middleware.AuthenticateUser
+		t.HTTPAuthMiddleware = middleware.AuthenticateUser
 	} else {
 		cfg.Server.GRPCMiddleware = []grpc.UnaryServerInterceptor{
 			fakeGRPCAuthUniaryMiddleware,
@@ -261,7 +261,7 @@ func (t *Cortex) setupAuthMiddleware(cfg *Config) {
 		cfg.Server.GRPCStreamMiddleware = []grpc.StreamServerInterceptor{
 			fakeGRPCAuthStreamMiddleware,
 		}
-		t.httpAuthMiddleware = fakeHTTPAuthMiddleware
+		t.HTTPAuthMiddleware = fakeHTTPAuthMiddleware
 	}
 }
 
@@ -317,7 +317,7 @@ func (t *Cortex) Run() error {
 	}
 
 	// before starting servers, register /ready handler. It should reflect entire Cortex.
-	t.server.HTTP.Path("/ready").Handler(t.readyHandler(sm))
+	t.Server.HTTP.Path("/ready").Handler(t.readyHandler(sm))
 
 	// Let's listen for events from this manager, and log them.
 	healthy := func() { level.Info(util.Logger).Log("msg", "Cortex started") }
