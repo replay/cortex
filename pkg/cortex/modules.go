@@ -71,7 +71,7 @@ const (
 	MemberlistKV        ModuleName = "memberlist-kv"
 	DataPurger          ModuleName = "data-purger"
 	All                 ModuleName = "all"
-	Graphite            moduleName = "graphite"
+	Graphite            ModuleName = "graphite"
 )
 
 func (m ModuleName) String() string {
@@ -505,7 +505,7 @@ func (t *Cortex) initStoreGateway(cfg *Config) (serv services.Service, err error
 	t.storeGateway = storegateway.NewStoreGateway(cfg.StoreGateway, cfg.TSDB, util.Logger, prometheus.DefaultRegisterer)
 
 	// Expose HTTP endpoints.
-	t.server.HTTP.HandleFunc("/store-gateway/ring", t.storeGateway.RingHandler)
+	t.Server.HTTP.HandleFunc("/store-gateway/ring", t.storeGateway.RingHandler)
 
 	return t.storeGateway, nil
 }
@@ -669,13 +669,13 @@ var modules = map[ModuleName]module{
 }
 
 func InjectModule(name string, deps []string, service func(t *Cortex, cfg *Config) (services.Service, error), wrappedService func(t *Cortex, cfg *Config) (services.Service, error)) {
-	moduleDeps := make([]moduleName, len(deps))
+	moduleDeps := make([]ModuleName, len(deps))
 
 	for i := range deps {
-		moduleDeps[i] = moduleName(deps[i])
+		moduleDeps[i] = ModuleName(deps[i])
 	}
 
-	modules[moduleName(name)] = module{
+	modules[ModuleName(name)] = module{
 		deps:           moduleDeps,
 		service:        service,
 		wrappedService: wrappedService,
@@ -683,12 +683,12 @@ func InjectModule(name string, deps []string, service func(t *Cortex, cfg *Confi
 }
 
 func UpdateDependency(name string, deps []string) {
-	moduleDeps := make([]moduleName, len(deps))
+	moduleDeps := make([]ModuleName, len(deps))
 
 	for i := range deps {
-		moduleDeps[i] = moduleName(deps[i])
+		moduleDeps[i] = ModuleName(deps[i])
 	}
-	m := modules[moduleName(name)]
+	m := modules[ModuleName(name)]
 	m.deps = moduleDeps
-	modules[moduleName(name)] = m
+	modules[ModuleName(name)] = m
 }
