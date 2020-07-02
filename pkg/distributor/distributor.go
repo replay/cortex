@@ -336,10 +336,8 @@ func (d *Distributor) checkSample(ctx context.Context, userID, cluster, replica 
 // Returns the validated series with it's labels/samples, and any error.
 func (d *Distributor) validateSeries(ts ingester_client.PreallocTimeseries, userID string) (client.PreallocTimeseries, error) {
 	labelsHistogram.Observe(float64(len(ts.Labels)))
-	if !d.cfg.SkipLabelValidation {
-		if err := validation.ValidateLabels(d.limits, userID, ts.Labels); err != nil {
-			return emptyPreallocSeries, err
-		}
+	if err := validation.ValidateLabels(d.limits, userID, ts.Labels); err != nil {
+		return emptyPreallocSeries, err
 	}
 
 	metricName, _ := extract.MetricNameFromLabelAdapters(ts.Labels)

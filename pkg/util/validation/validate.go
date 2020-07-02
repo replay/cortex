@@ -106,6 +106,7 @@ func ValidateSample(cfg SampleValidationConfig, userID string, metricName string
 // LabelValidationConfig helps with getting required config to validate labels.
 type LabelValidationConfig interface {
 	EnforceMetricName(userID string) bool
+	EnforceLabelNameCharset(userID string) bool
 	MaxLabelNamesPerSeries(userID string) int
 	MaxLabelNameLength(userID string) int
 	MaxLabelValueLength(userID string) int
@@ -113,8 +114,8 @@ type LabelValidationConfig interface {
 
 // ValidateLabels returns an err if the labels are invalid.
 func ValidateLabels(cfg LabelValidationConfig, userID string, ls []client.LabelAdapter) error {
-	metricName, err := extract.MetricNameFromLabelAdapters(ls)
 	if cfg.EnforceMetricName(userID) {
+		metricName, err := extract.MetricNameFromLabelAdapters(ls)
 		if err != nil {
 			DiscardedSamples.WithLabelValues(missingMetricName, userID).Inc()
 			return httpgrpc.Errorf(http.StatusBadRequest, errMissingMetricName)
@@ -134,12 +135,13 @@ func ValidateLabels(cfg LabelValidationConfig, userID string, ls []client.LabelA
 
 	maxLabelNameLength := cfg.MaxLabelNameLength(userID)
 	maxLabelValueLength := cfg.MaxLabelValueLength(userID)
+	enforceLabelNameCharset := cfg.EnforceLabelNameCharset(userID)
 	lastLabelName := ""
 	for _, l := range ls {
 		var errTemplate string
 		var reason string
 		var cause interface{}
-		if !model.LabelName(l.Name).IsValid() {
+		if enforceLabelNameCharset && !model.LabelName(l.Name).IsValid() {
 			reason = invalidLabel
 			errTemplate = errInvalidLabel
 			cause = l.Name
