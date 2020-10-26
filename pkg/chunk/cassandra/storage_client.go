@@ -29,6 +29,7 @@ type Config struct {
 	Port                     int                 `yaml:"port"`
 	Keyspace                 string              `yaml:"keyspace"`
 	Consistency              string              `yaml:"consistency"`
+	ConsistencyTableManager  string              `yaml:"consistency_table_manager"`
 	ReplicationFactor        int                 `yaml:"replication_factor"`
 	DisableInitialHostLookup bool                `yaml:"disable_initial_host_lookup"`
 	SSL                      bool                `yaml:"SSL"`
@@ -57,6 +58,7 @@ func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 	f.IntVar(&cfg.Port, "cassandra.port", 9042, "Port that Cassandra is running on")
 	f.StringVar(&cfg.Keyspace, "cassandra.keyspace", "", "Keyspace to use in Cassandra.")
 	f.StringVar(&cfg.Consistency, "cassandra.consistency", "QUORUM", "Consistency level for Cassandra.")
+	f.StringVar(&cfg.ConsistencyTableManager, "cassandra.consistency-table-manager", "ALL", "Consistency level which the Table Manager uses for Cassandra.")
 	f.IntVar(&cfg.ReplicationFactor, "cassandra.replication-factor", 3, "Replication factor to use in Cassandra.")
 	f.BoolVar(&cfg.DisableInitialHostLookup, "cassandra.disable-initial-host-lookup", false, "Instruct the cassandra driver to not attempt to get host info from the system.peers table.")
 	f.BoolVar(&cfg.SSL, "cassandra.ssl", false, "Use SSL when connecting to cassandra instances.")
@@ -90,6 +92,18 @@ func (cfg *Config) Validate() error {
 }
 
 func (cfg *Config) session(name string, reg prometheus.Registerer) (*gocql.Session, error) {
+	return cfg.genericSession(name, nil, reg)
+}
+
+func (cfg *Config) tableManagerSession(name string, reg prometheus.Registerer) (*gocql.Session, error) {
+	consistency, err := gocql.ParseConsistencyWrapper(cfg.ConsistencyTableManager)
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to parse the configured table manager consistency")
+	}
+	return cfg.genericSession(name, &consistency, reg)
+}
+
+func (cfg *Config) genericSession(name string, consistencyOverride *gocql.Consistency, reg prometheus.Registerer) (*gocql.Session, error) {
 	cluster := gocql.NewCluster(strings.Split(cfg.Addresses, ",")...)
 	cluster.Port = cfg.Port
 	cluster.Keyspace = cfg.Keyspace
@@ -112,7 +126,7 @@ func (cfg *Config) session(name string, reg prometheus.Registerer) (*gocql.Sessi
 	if !cfg.ConvictHosts {
 		cluster.ConvictionPolicy = noopConvictionPolicy{}
 	}
-	if err := cfg.setClusterConfig(cluster); err != nil {
+	if err := cfg.setClusterConfig(cluster, consistencyOverride); err != nil {
 		return nil, errors.WithStack(err)
 	}
 
@@ -134,10 +148,17 @@ func (cfg *Config) session(name string, reg prometheus.Registerer) (*gocql.Sessi
 }
 
 // apply config settings to a cassandra ClusterConfig
-func (cfg *Config) setClusterConfig(cluster *gocql.ClusterConfig) error {
-	consistency, err := gocql.ParseConsistencyWrapper(cfg.Consistency)
-	if err != nil {
-		return errors.Wrap(err, "unable to parse the configured consistency")
+func (cfg *Config) setClusterConfig(cluster *gocql.ClusterConfig, consistencyOverride *gocql.Consistency) error {
+	var consistency gocql.Consistency
+	var err error
+
+	if consistencyOverride == nil {
+		consistency, err = gocql.ParseConsistencyWrapper(cfg.Consistency)
+		if err != nil {
+			return errors.Wrap(err, "unable to parse the configured consistency")
+		}
+	} else {
+		consistency = *consistencyOverride
 	}
 
 	cluster.Consistency = consistency
@@ -192,7 +213,7 @@ func (cfg *Config) createKeyspace() error {
 	cluster.Timeout = 20 * time.Second
 	cluster.ConnectTimeout = 20 * time.Second
 
-	if err := cfg.setClusterConfig(cluster); err != nil {
+	if err := cfg.setClusterConfig(cluster, nil); err != nil {
 		return errors.WithStack(err)
 	}
 
