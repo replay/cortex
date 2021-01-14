@@ -343,7 +343,7 @@ func (q *blocksStoreQuerier) LabelNames() ([]string, storage.Warnings, error) {
 	return strutil.MergeSlices(resNameSets...), resWarnings, nil
 }
 
-func (q *blocksStoreQuerier) LabelValues(name string) ([]string, storage.Warnings, error) {
+func (q *blocksStoreQuerier) LabelValues(name string, matchers ...*labels.Matcher) ([]string, storage.Warnings, error) {
 	spanLog, spanCtx := spanlogger.New(q.ctx, "blocksStoreQuerier.LabelValues")
 	defer spanLog.Span.Finish()
 

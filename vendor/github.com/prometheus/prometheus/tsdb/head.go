@@ -820,9 +820,22 @@ func (h *Head) truncateMemory(mint int64) (err error) {
 	h.metrics.headTruncateTotal.Inc()
 	start := time.Now()
 
-	h.gc()
+	actualMint := h.gc()
 	level.Info(h.logger).Log("msg", "Head GC completed", "duration", time.Since(start))
 	h.metrics.gcDuration.Observe(time.Since(start).Seconds())
+	if actualMint > h.minTime.Load() {
+		// The actual mint of the Head is higher than the one asked to truncate.
+		appendableMinValidTime := h.appendableMinValidTime()
+		if actualMint < appendableMinValidTime {
+			h.minTime.Store(actualMint)
+			h.minValidTime.Store(actualMint)
+		} else {
+			// The actual min time is in the appendable window.
+			// So we set the mint to the appendableMinValidTime.
+			h.minTime.Store(appendableMinValidTime)
+			h.minValidTime.Store(appendableMinValidTime)
+		}
+	}
 
 	// Truncate the chunk m-mapper.
 	if err := h.chunkDiskMapper.Truncate(mint); err != nil {
@@ -1054,10 +1067,8 @@ func (h *Head) appender() *headAppender {
 	cleanupAppendIDsBelow := h.iso.lowWatermark()
 
 	return &headAppender{
-		head: h,
-		// Set the minimum valid time to whichever is greater the head min valid time or the compaction window.
-		// This ensures that no samples will be added within the compaction window to avoid races.
-		minValidTime:          max(h.minValidTime.Load(), h.MaxTime()-h.chunkRange.Load()/2),
+		head:                  h,
+		minValidTime:          h.appendableMinValidTime(),
 		mint:                  math.MaxInt64,
 		maxt:                  math.MinInt64,
 		samples:               h.getAppendBuffer(),
@@ -1065,6 +1076,12 @@ func (h *Head) appender() *headAppender {
 		appendID:              appendID,
 		cleanupAppendIDsBelow: cleanupAppendIDsBelow,
 	}
+}
+
+func (h *Head) appendableMinValidTime() int64 {
+	// Setting the minimum valid time to whichever is greater, the head min valid time or the compaction window,
+	// ensures that no samples will be added within the compaction window to avoid races.
+	return max(h.minValidTime.Load(), h.MaxTime()-h.chunkRange.Load()/2)
 }
 
 func max(a, b int64) int64 {
@@ -1335,13 +1352,14 @@ func (h *Head) Delete(mint, maxt int64, ms ...*labels.Matcher) error {
 }
 
 // gc removes data before the minimum timestamp from the head.
-func (h *Head) gc() {
+// It returns the actual min times of the chunks present in the Head.
+func (h *Head) gc() int64 {
 	// Only data strictly lower than this timestamp must be deleted.
 	mint := h.MinTime()
 
 	// Drop old chunks and remember series IDs and hashes if they can be
 	// deleted entirely.
-	deleted, chunksRemoved := h.series.gc(mint)
+	deleted, chunksRemoved, actualMint := h.series.gc(mint)
 	seriesRemoved := len(deleted)
 
 	h.metrics.seriesRemoved.Add(float64(seriesRemoved))
@@ -1382,6 +1400,8 @@ func (h *Head) gc() {
 		panic(err)
 	}
 	h.symbols = symbols
+
+	return actualMint
 }
 
 // Tombstones returns a new reader over the head's tombstones
@@ -1578,8 +1598,8 @@ func (h *headIndexReader) Symbols() index.StringIter {
 
 // SortedLabelValues returns label values present in the head for the
 // specific label name that are within the time range mint to maxt.
-func (h *headIndexReader) SortedLabelValues(name string) ([]string, error) {
-	values, err := h.LabelValues(name)
+func (h *headIndexReader) SortedLabelValues(name string, matchers ...*labels.Matcher) ([]string, error) {
+	values, err := h.LabelValues(name, matchers...)
 	if err == nil {
 		sort.Strings(values)
 	}
@@ -1588,15 +1608,38 @@ func (h *headIndexReader) SortedLabelValues(name string) ([]string, error) {
 
 // LabelValues returns label values present in the head for the
 // specific label name that are within the time range mint to maxt.
-func (h *headIndexReader) LabelValues(name string) ([]string, error) {
+func (h *headIndexReader) LabelValues(name string, matchers ...*labels.Matcher) ([]string, error) {
 	h.head.symMtx.RLock()
 	defer h.head.symMtx.RUnlock()
 	if h.maxt < h.head.MinTime() || h.mint > h.head.MaxTime() {
 		return []string{}, nil
 	}
 
-	values := h.head.postings.LabelValues(name)
-	return values, nil
+	/*p, err := PostingsForMatchers(h, matchers...)
+	if err != nil {
+		return nil, err
+	}
+
+	dedupe := map[string]interface{}{}
+	for p.Next() {
+		err, v := h.head.LabelValueFor(p.At(), name)
+		if err != nil {
+			return nil, err
+		}
+		dedupe[v] = nil
+	}
+	if err := p.Err(); err != nil {
+		return nil, err
+	}
+
+	values := make([]string, 0, len(dedupe))
+	for value := range dedupe {
+		values = append(values, value)
+	}
+
+	sort.Strings(values)
+	return values, nil*/
+	return nil, nil
 }
 
 // LabelNames returns all the unique label names present in the head
@@ -1813,11 +1856,12 @@ func newStripeSeries(stripeSize int, seriesCallback SeriesLifecycleCallback) *st
 
 // gc garbage collects old chunks that are strictly before mint and removes
 // series entirely that have no chunks left.
-func (s *stripeSeries) gc(mint int64) (map[uint64]struct{}, int) {
+func (s *stripeSeries) gc(mint int64) (map[uint64]struct{}, int, int64) {
 	var (
-		deleted            = map[uint64]struct{}{}
-		deletedForCallback = []labels.Labels{}
-		rmChunks           = 0
+		deleted                  = map[uint64]struct{}{}
+		deletedForCallback       = []labels.Labels{}
+		rmChunks                 = 0
+		actualMint         int64 = math.MaxInt64
 	)
 	// Run through all series and truncate old chunks. Mark those with no
 	// chunks left as deleted and store their ID.
@@ -1830,6 +1874,10 @@ func (s *stripeSeries) gc(mint int64) (map[uint64]struct{}, int) {
 				rmChunks += series.truncateChunksBefore(mint)
 
 				if len(series.mmappedChunks) > 0 || series.headChunk != nil || series.pendingCommit {
+					seriesMint := series.minTime()
+					if seriesMint < actualMint {
+						actualMint = seriesMint
+					}
 					series.Unlock()
 					continue
 				}
@@ -1864,7 +1912,11 @@ func (s *stripeSeries) gc(mint int64) (map[uint64]struct{}, int) {
 		deletedForCallback = deletedForCallback[:0]
 	}
 
-	return deleted, rmChunks
+	if actualMint == math.MaxInt64 {
+		actualMint = mint
+	}
+
+	return deleted, rmChunks, actualMint
 }
 
 func (s *stripeSeries) getByID(id uint64) *memSeries {
@@ -2086,26 +2138,25 @@ func (s *memSeries) chunkID(pos int) int {
 // have no timestamp at or after mint.
 // Chunk IDs remain unchanged.
 func (s *memSeries) truncateChunksBefore(mint int64) (removed int) {
-	var k int
 	if s.headChunk != nil && s.headChunk.maxTime < mint {
 		// If head chunk is truncated, we can truncate all mmapped chunks.
-		k = 1 + len(s.mmappedChunks)
-		s.firstChunkID += k
+		removed = 1 + len(s.mmappedChunks)
+		s.firstChunkID += removed
 		s.headChunk = nil
 		s.mmappedChunks = nil
-		return k
+		return removed
 	}
 	if len(s.mmappedChunks) > 0 {
 		for i, c := range s.mmappedChunks {
 			if c.maxTime >= mint {
 				break
 			}
-			k = i + 1
+			removed = i + 1
 		}
-		s.mmappedChunks = append(s.mmappedChunks[:0], s.mmappedChunks[k:]...)
-		s.firstChunkID += k
+		s.mmappedChunks = append(s.mmappedChunks[:0], s.mmappedChunks[removed:]...)
+		s.firstChunkID += removed
 	}
-	return k
+	return removed
 }
 
 // append adds the sample (t, v) to the series. The caller also has to provide
