@@ -1050,6 +1050,7 @@ github.com/prometheus/common v0.14.0 h1:RHRyE8UocrbjU+6UvRzwi6HjiDfxrrBU91TtbKzk
 github.com/prometheus/common v0.14.0/go.mod h1:U+gB1OBLb1lF3O42bTCL+FK18tX9Oar16Clt/msog/s=
 github.com/prometheus/common v0.15.0 h1:4fgOnadei3EZvgRwxJ7RMpG1k1pOZth5Pc13tyspaKM=
 github.com/prometheus/common v0.15.0/go.mod h1:U+gB1OBLb1lF3O42bTCL+FK18tX9Oar16Clt/msog/s=
+github.com/prometheus/exporter-toolkit v0.4.0/go.mod h1:OCkM4805mmisBhLmVFw858QYi3v0wKdY6/UxrT0pZVg=
 github.com/prometheus/exporter-toolkit v0.5.0/go.mod h1:OCkM4805mmisBhLmVFw858QYi3v0wKdY6/UxrT0pZVg=
 github.com/prometheus/node_exporter v1.0.0-rc.0.0.20200428091818-01054558c289 h1:dTUS1vaLWq+Y6XKOTnrFpoVsQKLCbCp1OLj24TDi7oM=
 github.com/prometheus/node_exporter v1.0.0-rc.0.0.20200428091818-01054558c289/go.mod h1:FGbBv5OPKjch+jNUJmEQpMZytIdyW0NdBtWFcfSKusc=
@@ -1087,6 +1088,10 @@ github.com/rafaeljusto/redigomock v0.0.0-20190202135759-257e089e14a1/go.mod h1:J
 github.com/rcrowley/go-metrics v0.0.0-20181016184325-3113b8401b8a/go.mod h1:bCqnVzQkZxMG4s8nGwiZ5l3QUCyqpo9Y+/ZMZ9VjZe4=
 github.com/replay/prometheus v1.8.2-0.20210114161258-eb717604d31c h1:FuMYpvVkMcqJM/psbrn5oQ0i7C9ARo5pPN8JIMpxkkg=
 github.com/replay/prometheus v1.8.2-0.20210114161258-eb717604d31c/go.mod h1:sWIuuCk+N+orAEe+P3QMEw0gk9kT8X+7WGhGuarARA4=
+github.com/replay/prometheus v1.8.2-0.20210114174655-d7b428dc4241 h1:KHbYXTTljgY0tnjjCOSPf2wyzGq61tmvqCgKNUEink0=
+github.com/replay/prometheus v1.8.2-0.20210114174655-d7b428dc4241/go.mod h1:LivjEzx2QxF0TGyU89Su0fYg/4eLYIS1+r5LysxvGSI=
+github.com/replay/prometheus v1.8.2-0.20210114180249-0549d0c777ea h1:gLQyAHA4xq2hE43qpC/CWK5ZILus0ZNknlgfOIcLovg=
+github.com/replay/prometheus v1.8.2-0.20210114180249-0549d0c777ea/go.mod h1:LivjEzx2QxF0TGyU89Su0fYg/4eLYIS1+r5LysxvGSI=
 github.com/retailnext/hllpp v1.0.1-0.20180308014038-101a6d2f8b52/go.mod h1:RDpi1RftBQPUCDRw6SmxeaREsAaRKnOclghuzp/WRzc=
 github.com/rogpeppe/fastuuid v0.0.0-20150106093220-6724a57986af/go.mod h1:XWv6SoW27p1b0cqNHllgS5HIMJraePCO15w5zCzIWYg=
 github.com/rogpeppe/fastuuid v1.2.0/go.mod h1:jVj6XXZzXRy/MSR5jhDC/2q6DgLz+nrA6LYCDYWNEvQ=

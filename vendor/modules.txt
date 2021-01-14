@@ -472,7 +472,7 @@ github.com/prometheus/node_exporter/https
 github.com/prometheus/procfs
 github.com/prometheus/procfs/internal/fs
 github.com/prometheus/procfs/internal/util
-# github.com/prometheus/prometheus v1.8.2-0.20201119181812-c8f810083d3f => github.com/replay/prometheus v1.8.2-0.20210114161258-eb717604d31c
+# github.com/prometheus/prometheus v1.8.2-0.20201119181812-c8f810083d3f => github.com/replay/prometheus v1.8.2-0.20210114180249-0549d0c777ea
 ## explicit
 github.com/prometheus/prometheus/config
 github.com/prometheus/prometheus/discovery
@@ -1026,4 +1026,4 @@ sigs.k8s.io/yaml
 # github.com/go-openapi/strfmt => github.com/go-openapi/strfmt v0.19.5
 # github.com/go-openapi/swag => github.com/go-openapi/swag v0.19.9
 # github.com/go-openapi/validate => github.com/go-openapi/validate v0.19.8
-# github.com/prometheus/prometheus => github.com/replay/prometheus v1.8.2-0.20210114161258-eb717604d31c
+# github.com/prometheus/prometheus => github.com/replay/prometheus v1.8.2-0.20210114180249-0549d0c777ea

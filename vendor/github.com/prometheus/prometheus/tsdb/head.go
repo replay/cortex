@@ -1598,8 +1598,8 @@ func (h *headIndexReader) Symbols() index.StringIter {
 
 // SortedLabelValues returns label values present in the head for the
 // specific label name that are within the time range mint to maxt.
-func (h *headIndexReader) SortedLabelValues(name string, matchers ...*labels.Matcher) ([]string, error) {
-	values, err := h.LabelValues(name, matchers...)
+func (h *headIndexReader) SortedLabelValues(name string, ms ...*labels.Matcher) ([]string, error) {
+	values, err := h.LabelValues(name, ms...)
 	if err == nil {
 		sort.Strings(values)
 	}
@@ -1608,38 +1608,40 @@ func (h *headIndexReader) SortedLabelValues(name string, matchers ...*labels.Mat
 
 // LabelValues returns label values present in the head for the
 // specific label name that are within the time range mint to maxt.
-func (h *headIndexReader) LabelValues(name string, matchers ...*labels.Matcher) ([]string, error) {
+func (h *headIndexReader) LabelValues(name string, ms ...*labels.Matcher) ([]string, error) {
 	h.head.symMtx.RLock()
 	defer h.head.symMtx.RUnlock()
 	if h.maxt < h.head.MinTime() || h.mint > h.head.MaxTime() {
 		return []string{}, nil
 	}
 
-	/*p, err := PostingsForMatchers(h, matchers...)
-	if err != nil {
-		return nil, err
+	if len(ms) == 0 {
+		return h.head.postings.LabelValues(name, ms...), nil
 	}
 
-	dedupe := map[string]interface{}{}
-	for p.Next() {
-		err, v := h.head.LabelValueFor(p.At(), name)
-		if err != nil {
-			return nil, err
+	var results []string
+VALUES:
+	for _, value := range h.head.postings.LabelValues(name, ms...) {
+		postings := h.head.postings.Get(name, value)
+	POSTINGS:
+		for {
+			if !postings.Next() {
+				break
+			}
+
+			memSeries := h.head.series.getByID(postings.At())
+			for _, matcher := range ms {
+				if !matcher.Matches(memSeries.lset.Get(matcher.Name)) {
+					continue POSTINGS
+				}
+			}
+
+			results = append(results, value)
+			continue VALUES
 		}
-		dedupe[v] = nil
-	}
-	if err := p.Err(); err != nil {
-		return nil, err
 	}
 
-	values := make([]string, 0, len(dedupe))
-	for value := range dedupe {
-		values = append(values, value)
-	}
-
-	sort.Strings(values)
-	return values, nil*/
-	return nil, nil
+	return results, nil
 }
 
 // LabelNames returns all the unique label names present in the head

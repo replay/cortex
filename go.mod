@@ -109,4 +109,4 @@ replace github.com/go-openapi/swag => github.com/go-openapi/swag v0.19.9
 
 replace github.com/go-openapi/validate => github.com/go-openapi/validate v0.19.8
 
-replace github.com/prometheus/prometheus => github.com/replay/prometheus v1.8.2-0.20210114161258-eb717604d31c
+replace github.com/prometheus/prometheus => github.com/replay/prometheus v1.8.2-0.20210114180249-0549d0c777ea

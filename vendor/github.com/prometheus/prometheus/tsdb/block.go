@@ -63,10 +63,10 @@ type IndexReader interface {
 	Symbols() index.StringIter
 
 	// SortedLabelValues returns sorted possible label values.
-	SortedLabelValues(name string, matchers ...*labels.Matcher) ([]string, error)
+	SortedLabelValues(name string, ms ...*labels.Matcher) ([]string, error)
 
 	// LabelValues returns possible label values which may not be sorted.
-	LabelValues(name string, matchers ...*labels.Matcher) ([]string, error)
+	LabelValues(name string, ms ...*labels.Matcher) ([]string, error)
 
 	// Postings returns the postings list iterator for the label pairs.
 	// The Postings here contain the offsets to the series inside the index.
