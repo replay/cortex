@@ -21,6 +21,7 @@ import (
 	"github.com/weaveworks/common/instrument"
 	"github.com/weaveworks/common/user"
 
+	"github.com/cortexproject/cortex/pkg/ingester/client"
 	ingester_client "github.com/cortexproject/cortex/pkg/ingester/client"
 	"github.com/cortexproject/cortex/pkg/prom1/storage/metric"
 	"github.com/cortexproject/cortex/pkg/ring"
@@ -661,16 +662,15 @@ func (d *Distributor) ForReplicationSet(ctx context.Context, replicationSet ring
 }
 
 // LabelValuesForLabelName returns all of the label values that are associated with a given label name.
-func (d *Distributor) LabelValuesForLabelName(ctx context.Context, from, to model.Time, labelName model.LabelName) ([]string, error) {
+func (d *Distributor) LabelValuesForLabelName(ctx context.Context, from, to model.Time, labelName model.LabelName, matchers ...*labels.Matcher) ([]string, error) {
 	replicationSet, err := d.GetIngestersForMetadata(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	req := &ingester_client.LabelValuesRequest{
-		LabelName:        string(labelName),
-		StartTimestampMs: int64(from),
-		EndTimestampMs:   int64(to),
+	req, err := client.ToLabelValuesRequest(labelName, from, to, matchers)
+	if err != nil {
+		return nil, err
 	}
 	resps, err := d.ForReplicationSet(ctx, replicationSet, func(ctx context.Context, client ingester_client.IngesterClient) (interface{}, error) {
 		return client.LabelValues(ctx, req)

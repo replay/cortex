@@ -844,7 +844,37 @@ func (i *Ingester) LabelValues(ctx context.Context, req *client.LabelValuesReque
 	}
 
 	resp := &client.LabelValuesResponse{}
-	resp.LabelValues = append(resp.LabelValues, state.index.LabelValues(req.LabelName)...)
+
+	if len(req.Matchers) == 0 {
+		resp.LabelValues = append(resp.LabelValues, state.index.LabelValues(req.LabelName)...)
+	} else {
+		i.userStatesMtx.RLock()
+		defer i.userStatesMtx.RUnlock()
+		state, ok, err := i.userStates.getViaContext(ctx)
+		if err != nil {
+			return nil, err
+		} else if !ok {
+			return nil, nil
+		}
+
+		matchers, err := client.FromLabelMatchers(req.Matchers)
+		if err != nil {
+			return nil, err
+		}
+
+		values := make(map[string]struct{})
+		if err := state.forSeriesMatching(ctx, matchers, func(ctx context.Context, fp model.Fingerprint, series *memorySeries) error {
+			values[series.metric.Get(req.LabelName)] = struct{}{}
+			return nil
+		}, nil, 0); err != nil {
+			return nil, err
+		}
+
+		resp.LabelValues = make([]string, 0, len(values))
+		for value := range values {
+			resp.LabelValues = append(resp.LabelValues, value)
+		}
+	}
 
 	return resp, nil
 }
