@@ -22,7 +22,7 @@ require (
 	github.com/go-kit/kit v0.10.0
 	github.com/go-redis/redis/v8 v8.2.3
 	github.com/gocql/gocql v0.0.0-20200526081602-cd04bd7f22a7
-	github.com/gogo/protobuf v1.3.1
+	github.com/gogo/protobuf v1.3.2
 	github.com/gogo/status v1.0.3
 	github.com/golang-migrate/migrate/v4 v4.7.0
 	github.com/golang/protobuf v1.4.3
@@ -47,7 +47,7 @@ require (
 	github.com/prometheus/client_golang v1.9.0
 	github.com/prometheus/client_model v0.2.0
 	github.com/prometheus/common v0.15.0
-	github.com/prometheus/prometheus v1.8.2-0.20210124145330-b5dfa2414b9e
+	github.com/prometheus/prometheus v1.8.2-0.20210209173835-7715fe3219b9
 	github.com/segmentio/fasthash v0.0.0-20180216231524-a72b379d632e
 	github.com/sony/gobreaker v0.4.1
 	github.com/spf13/afero v1.2.2
