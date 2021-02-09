@@ -5,6 +5,7 @@ import (
 
 	"github.com/gogo/status"
 	"github.com/pkg/errors"
+	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/pkg/labels"
 	"github.com/prometheus/prometheus/promql"
 	"github.com/prometheus/prometheus/storage"
@@ -76,8 +77,8 @@ type errorTranslateQuerier struct {
 	q storage.Querier
 }
 
-func (e errorTranslateQuerier) LabelValues(name string) ([]string, storage.Warnings, error) {
-	values, warnings, err := e.q.LabelValues(name)
+func (e errorTranslateQuerier) LabelValues(name string, matchers ...*labels.Matcher) ([]string, storage.Warnings, error) {
+	values, warnings, err := e.q.LabelValues(name, matchers...)
 	return values, warnings, translateError(err)
 }
 
@@ -99,8 +100,8 @@ type errorTranslateChunkQuerier struct {
 	q storage.ChunkQuerier
 }
 
-func (e errorTranslateChunkQuerier) LabelValues(name string) ([]string, storage.Warnings, error) {
-	values, warnings, err := e.q.LabelValues(name)
+func (e errorTranslateChunkQuerier) LabelValues(name string, matchers ...*labels.Matcher) ([]string, storage.Warnings, error) {
+	values, warnings, err := e.q.LabelValues(name, matchers...)
 	return values, warnings, translateError(err)
 }
 

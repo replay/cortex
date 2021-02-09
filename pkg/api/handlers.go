@@ -207,6 +207,7 @@ func NewQuerierHandler(
 		&v1.PrometheusVersion{},
 		// This is used for the stats API which we should not support. Or find other ways to.
 		prometheus.GathererFunc(func() ([]*dto.MetricFamily, error) { return nil, nil }),
+		false,
 	)
 
 	router := mux.NewRouter()
