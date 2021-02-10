@@ -108,7 +108,7 @@ func TestApiStatusCodes(t *testing.T) {
 			"error from seriesset": testQueryable{q: testQuerier{s: testSeriesSet{err: tc.err}}},
 		} {
 			t.Run(fmt.Sprintf("%s/%d", k, ix), func(t *testing.T) {
-				r := createPrometheusAPI(errorTranslateQueryable{q: q})
+				r := createPrometheusAPI(readOnlyStorage{errorTranslateQueryable{q: q}})
 				rec := httptest.NewRecorder()
 
 				req := httptest.NewRequest("GET", "/api/v1/query?query=up", nil)
@@ -123,7 +123,7 @@ func TestApiStatusCodes(t *testing.T) {
 	}
 }
 
-func createPrometheusAPI(q storage.SampleAndChunkQueryable) *route.Router {
+func createPrometheusAPI(q storage.Storage) *route.Router {
 	engine := promql.NewEngine(promql.EngineOpts{
 		Logger:             util_log.Logger,
 		Reg:                nil,
@@ -151,6 +151,7 @@ func createPrometheusAPI(q storage.SampleAndChunkQueryable) *route.Router {
 		func() (v1.RuntimeInfo, error) { return v1.RuntimeInfo{}, errors.New("not implemented") },
 		&v1.PrometheusVersion{},
 		prometheus.DefaultGatherer,
+		false,
 	)
 
 	promRouter := route.New().WithPrefix("/api/v1")
@@ -180,7 +181,7 @@ type testQuerier struct {
 	err error
 }
 
-func (t testQuerier) LabelValues(name string) ([]string, storage.Warnings, error) {
+func (t testQuerier) LabelValues(name string, matchers ...*labels.Matcher) ([]string, storage.Warnings, error) {
 	return nil, nil, t.err
 }
 
