@@ -5,7 +5,6 @@ import (
 
 	"github.com/gogo/status"
 	"github.com/pkg/errors"
-	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/pkg/labels"
 	"github.com/prometheus/prometheus/promql"
 	"github.com/prometheus/prometheus/storage"
@@ -71,6 +70,22 @@ func (e errorTranslateQueryable) Querier(ctx context.Context, mint, maxt int64) 
 func (e errorTranslateQueryable) ChunkQuerier(ctx context.Context, mint, maxt int64) (storage.ChunkQuerier, error) {
 	q, err := e.q.ChunkQuerier(ctx, mint, maxt)
 	return errorTranslateChunkQuerier{q: q}, translateError(err)
+}
+
+type readOnlyStorage struct {
+	storage.SampleAndChunkQueryable
+}
+
+func (r readOnlyStorage) Appender(ctx context.Context) storage.Appender {
+	return nil
+}
+
+func (r readOnlyStorage) Close() error {
+	return errors.New("Not implemented in read only storage")
+}
+
+func (r readOnlyStorage) StartTime() (int64, error) {
+	return 0, errors.New("Not implemented in read only storage")
 }
 
 type errorTranslateQuerier struct {
